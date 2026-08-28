@@ -3,6 +3,8 @@ import HttpError from "../middleware/HttpError.js";
 import restaurantModel from "../model/restaurant.model.js";
 import sendMail from "../utils/SendMail.js";
 import auditLogger from "../middleware/auditLogger.js";
+import redisClient from "../config/redis.js";
+import { response } from "express";
 
 const add = async (req, res, next) => {
     try {
@@ -91,6 +93,17 @@ const getAll = async (req, res, next) => {
             [sort]: order === "asc" ? 1 : -1
         };
 
+        const cachRestaurant = `restaurants:${JSON.stringify(req.query)}`; 
+
+        const cachData = await redisClient.get(cachRestaurant);
+
+        if(cachData){
+            return res.status(200).json({
+                ...JSON.parse(cachData),
+                source:"redis"
+            });
+        }
+
         const totalRestaurant = await restaurantModel.countDocuments(filter);
 
         const restaurants = await restaurantModel
@@ -102,19 +115,32 @@ const getAll = async (req, res, next) => {
             .lean();
 
         if (restaurants.length === 0) {
-            res.status(404).json({
+           return res.status(404).json({
                 success: true,
                 message: "restaurant data not found"
             });
         }
 
-        res.status(200).json({
+        const responseData = {
+        
             success: true,
             message: "restaurants data fetched",
             totalRestaurant: totalRestaurant,
             totalPages: Math.ceil(totalRestaurant / limit),
             currentPage: page,
             restaurants
+        
+        }
+
+        await redisClient.setEx(
+            cachRestaurant,
+            300,
+            JSON.stringify(responseData)
+        );
+
+        return res.status(200).json({
+            ...responseData,
+            source:"mongodb"
         });
 
 

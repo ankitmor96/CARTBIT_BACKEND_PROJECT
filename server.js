@@ -1,7 +1,6 @@
 import express from "express";
 import HttpError from "./middleware/HttpError.js";
 import connectDB from "./config/db.js";
-import dotenv from "dotenv";
 import userRoutes from "./routes/user.routes.js";
 import adminRoutes from "./routes/admin.Routes.js";
 import restaurantRoutes from "./routes/restaurant.routes.js";
@@ -17,7 +16,8 @@ import orderRoutes from "./routes/order.Routes.js";
 import AuditLogRoutes from "./routes/audit.Routes.js";
 import paymentRoutes from "./routes/payment.Routes.js";
 import path from "path";
-
+import dotenv from "dotenv";
+import redisClient from "./config/redis.js";
 
 
 // .env file configration
@@ -32,6 +32,21 @@ console.log(
     "PUBLIC FOLDER:",
     path.join(process.cwd(), "public")
 );
+
+const testRedis = async () => {
+
+    await redisClient.setEx("cartbit", 60, "Hello Redis");
+
+    const ttl = await redisClient.ttl("cartbit");
+
+    console.log(ttl);
+
+    const data = await redisClient.get("cartbit");
+
+    console.log("redis data:", data);
+};
+
+testRedis();
 
 app.use(express.static(path.join(process.cwd(), "public")));
 

@@ -24,4 +24,4 @@ const getAll = async (req, res, next) => {
     }
 };
 
-export default { getAll };
+export default {getAll};
